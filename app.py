@@ -9,6 +9,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flasgger import Swagger
 from database import init_db, test_connection
+from mqtt_subscriber import start_mqtt_subscriber
 
 # Import des blueprints pour l'organisation modulaire de l'API
 from controllers.pays_controller import pays_bp
@@ -122,8 +123,8 @@ if __name__ == '__main__':
         
         print(f"API démarrée sur http://{host}:{port}")
         print(f"Documentation disponible sur http://{host}:{port}/docs")
-        
-        app.run(host=host, port=port, debug=app.config['DEBUG'])
+        start_mqtt_subscriber()
+        app.run(host=host, port=port, debug=app.config['DEBUG'], use_reloader=False)
     else:
         print("Erreur de connexion à la base de données")
         exit(1)

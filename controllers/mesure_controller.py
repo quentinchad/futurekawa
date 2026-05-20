@@ -4,34 +4,16 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from database import get_db, commit_session, rollback_session
 from models import Mesure
+from sqlalchemy import text
+from services.alert_email_service import send_alerte_email
 
 mesure_bp = Blueprint('mesure', __name__, url_prefix='/api/mesures')
 
 @mesure_bp.route('', methods=['POST'])
 def create_mesure():
-    """
-    Crée une mesure
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          required:
-            - idEntrepot
-            - temperature
-            - humidite
-    responses:
-      201:
-        description: Created
-        schema:
-          type: object
-    """
     try:
         data = request.get_json()
         
-        # Validation des données requises
         required_fields = ['idEntrepot', 'temperature', 'humidite']
         for field in required_fields:
             if field not in data:
@@ -39,7 +21,6 @@ def create_mesure():
         
         session = get_db()
         
-        # Création de la mesure
         mesure = Mesure(
             idEntrepot=data['idEntrepot'],
             temperature=float(data['temperature']),
@@ -48,52 +29,77 @@ def create_mesure():
         )
         
         session.add(mesure)
-        commit_session()
-        
+
+        # ---- LOGIQUE ALERTES ----
+
+        row = session.execute(text("""
+            SELECT 
+                p.temperatureMin,
+                p.temperatureMax,
+                p.humiditeMin,
+                p.humiditeMax,
+                e.nom AS entrepotNom
+            FROM Entrepot e
+            JOIN Exploitation ex ON e.idExploitation = ex.idExploitation
+            JOIN Pays p ON ex.idPays = p.idPays
+            WHERE e.idEntrepot = :idEntrepot
+        """), {"idEntrepot": data['idEntrepot']}).fetchone()
+
+        if row:
+            session.flush()
+
+            temp_hors_plage = mesure.temperature < row.temperatureMin or mesure.temperature > row.temperatureMax
+            hum_hors_plage  = mesure.humidite   < row.humiditeMin    or mesure.humidite   > row.humiditeMax
+
+            if temp_hors_plage or hum_hors_plage:
+                session.execute(text("""
+                    INSERT INTO Alertes (idMesure) 
+                    VALUES (:idMesure)
+                """), {'idMesure': mesure.idMesure})
+
+                # Envoi de l'email d'alerte
+                send_alerte_email(
+                    id_entrepot=data['idEntrepot'],
+                    entrepot_nom=row.entrepotNom,
+                    temperature=mesure.temperature,
+                    humidite=mesure.humidite,
+                    temp_hors_plage=temp_hors_plage,
+                    hum_hors_plage=hum_hors_plage,
+                    seuils={
+                        'temperatureMin': row.temperatureMin,
+                        'temperatureMax': row.temperatureMax,
+                        'humiditeMin':    row.humiditeMin,
+                        'humiditeMax':    row.humiditeMax,
+                    },
+                    dat_mesure=mesure.datMesure.strftime('%d/%m/%Y %H:%M:%S')
+                )
+
+        # ---- FIN ----
+
         result = mesure.to_dict()
+        session.commit()
         session.close()
         
         return jsonify(result), 201
         
     except Exception as e:
-        rollback_session()
+        session.rollback()
+        session.close()
+        print(f"Erreur: {e}")
         return jsonify({'error': str(e)}), 500
 
 @mesure_bp.route('/entrepot/<string:entrepot_id>', methods=['GET'])
 def get_mesures_by_entrepot(entrepot_id):
-    """
-    Mesures entrepôt
-    ---
-    parameters:
-      - name: entrepot_id
-        in: path
-        required: true
-        type: string
-      - name: limit
-        in: query
-        type: integer
-        default: 100
-      - name: from_date
-        in: query
-        type: string
-    responses:
-      200:
-        description: OK
-        schema:
-          type: array
-    """
     try:
         session = get_db()
         
         query = session.query(Mesure).filter(Mesure.idEntrepot == entrepot_id)
         
-        # Filtre par date si spécifié
         from_date = request.args.get('from_date')
         if from_date:
             from_date_dt = datetime.fromisoformat(from_date.replace('Z', '+00:00'))
             query = query.filter(Mesure.datMesure >= from_date_dt)
         
-        # Limite les résultats
         limit = request.args.get('limit', 100, type=int)
         mesures = query.order_by(Mesure.datMesure.desc()).limit(limit).all()
         
@@ -108,20 +114,6 @@ def get_mesures_by_entrepot(entrepot_id):
 
 @mesure_bp.route('/<string:mesure_id>', methods=['GET'])
 def get_mesure(mesure_id):
-    """
-    Détails mesure
-    ---
-    parameters:
-      - name: mesure_id
-        in: path
-        required: true
-        type: string
-    responses:
-      200:
-        description: OK
-        schema:
-          type: object
-    """
     try:
         session = get_db()
         mesure = session.query(Mesure).filter(Mesure.idMesure == mesure_id).first()

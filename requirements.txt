@@ -1,24 +1,23 @@
 # Framework web
 Flask==2.3.3
 Flask-CORS==4.0.0
-flask-swagger-ui==4.11.1
 flasgger==0.9.7.1
+werkzeug==2.3.7
 
-# Base de données
+# Base de donnees
 SQLAlchemy==2.0.21
+PyMySQL==1.1.0
+cryptography==42.0.5
+
+# MQTT
+paho-mqtt==1.6.1
+
+# HTTP (Mailjet)
+requests==2.31.0
 
 # Utils
 python-dotenv==1.0.0
 python-dateutil==2.8.2
 
-# Authentification et sécurité
-PyJWT==2.8.0
-werkzeug==2.3.7
-
-
-# Monitoring et logging
+# Production
 gunicorn==21.2.0
-
-
-# Pour MySQL
-PyMySQL==1.1.0

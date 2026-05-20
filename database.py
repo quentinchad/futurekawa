@@ -76,18 +76,24 @@ def drop_db():
     Base.metadata.drop_all(bind=engine)
     print("Tables supprimées avec succès")
 
-def commit_session():
+def commit_session(session=None):
     """Valide la transaction en cours"""
     try:
-        SessionLocal.commit()
+        if session:
+            session.commit()
+        else:
+            SessionLocal.commit()
     except Exception as e:
         print(f"Erreur lors du commit: {e}")
         raise e
 
-def rollback_session():
+def rollback_session(session=None):
     """Annule la transaction en cours"""
     try:
-        SessionLocal.rollback()
+        if session:
+            session.rollback()
+        else:
+            SessionLocal.rollback()
     except Exception as e:
         print(f"Erreur lors du rollback: {e}")
         raise e

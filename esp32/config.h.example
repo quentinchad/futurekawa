@@ -1,0 +1,19 @@
+// Modele de configuration ESP32
+// 1. Copier ce fichier en "config.h" dans le meme dossier
+// 2. Remplir les valeurs ci-dessous
+// 3. Flasher l'ESP32
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+const char* WIFI_SSID     = "VOTRE_SSID";
+const char* WIFI_PASSWORD = "VOTRE_MOT_DE_PASSE";
+
+// IP de la machine qui fait tourner docker compose
+const char* MQTT_BROKER   = "192.168.X.X";
+const int   MQTT_PORT     = 1883;
+
+const int   ID_ENTREPOT   = 1;
+const char* MQTT_TOPIC    = "entrepot/1/mesures";
+
+#endif

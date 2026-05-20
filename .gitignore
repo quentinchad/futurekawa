@@ -1,29 +1,31 @@
-# Variables d'environnement
+# Secrets
 .env
-.env.local
+esp32/main/config.h
 
-# Base de données SQLite (si utilisée)
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Bases locales
 *.db
 *.sqlite
 *.sqlite3
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-
-# Environnement virtuel
-venv/
-env/
-
 # IDE
 .vscode/
 .idea/
+*.swp
 
-# Fichiers temporaires
-*.log
-*.tmp
-
-# Fichiers système
+# OS
 .DS_Store
 Thumbs.db
+
+# Tests / build
+.approval_tests_temp/
+.pytest_cache/
+htmlcov/
+.coverage
